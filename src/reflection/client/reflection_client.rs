@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::{ReflectedClientError, ReflectedClientResult};
+use protobuf::{descriptor, Message};
 use tokio_stream::StreamExt;
 use tonic::transport::Uri;
 use tonic_reflection::pb::{
@@ -89,7 +90,7 @@ impl ReflectionClient {
     pub(crate) async fn get_service_file_descriptors(
         &mut self,
         services: Vec<ServiceResponse>,
-    ) -> ReflectedClientResult<HashMap<String, Vec<Vec<u8>>>> {
+    ) -> ReflectedClientResult<HashMap<String, protobuf::descriptor::FileDescriptorProto>> {
         let mut descriptors = HashMap::with_capacity(services.len());
         let requests: Vec<ServerReflectionRequest> = services
             .into_iter()
@@ -138,10 +139,20 @@ impl ReflectionClient {
                                 let FileDescriptorResponse {
                                     file_descriptor_proto,
                                 } = response;
-                                descriptors.insert(service_name, file_descriptor_proto);
+                                if !file_descriptor_proto.is_empty() {
+                                    let descriptor = protobuf::descriptor::FileDescriptorProto::parse_from_bytes(&file_descriptor_proto[0])?;
+                                    tracing::debug!(
+                                        "Parsed descriptor: {:?} for service: {:?}",
+                                        &descriptor.name,
+                                        &service_name,
+                                    );
+                                    descriptors.insert(service_name, descriptor);
+                                } else {
+                                    tracing::warn!("FileDescriptorResponse was empty");
+                                }
                             }
                             _ => {
-                                tracing::info!("received incorrect response: {:?}", &response);
+                                tracing::warn!("received incorrect response: {:?}", &response);
                             }
                         }
                     }
