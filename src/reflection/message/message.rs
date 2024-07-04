@@ -17,7 +17,17 @@ impl Message {
 
 impl core::fmt::Debug for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.descriptor.fmt(f)
+        f.debug_struct("Message")
+            .field("name", &self.descriptor.name())
+            .field(
+                "fields",
+                &self
+                    .descriptor
+                    .fields()
+                    .map(|field| field.name().to_owned())
+                    .collect::<Vec<String>>(),
+            )
+            .finish()
     }
 }
 

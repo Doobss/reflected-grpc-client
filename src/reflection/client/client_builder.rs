@@ -43,12 +43,11 @@ impl ClientBuilder {
 
         let mut reflection_client = ReflectionClient::from_address(address, secure).await?;
         let services = reflection_client.get_services().await?;
-        tracing::debug!("reflected services: {:?}", &services);
 
         let client = Client {
             span: client_span,
             address,
-            reflection_client,
+            services,
         };
         tracing::debug!("ClientBuilder built new : {:?}", &client);
         Ok(client)

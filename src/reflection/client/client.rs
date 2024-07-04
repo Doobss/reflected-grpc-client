@@ -1,11 +1,12 @@
-use super::{ClientBuilder, ReflectionClient};
+use std::collections::HashMap;
 
-#[derive(Clone)]
+use crate::{ClientBuilder, Service};
 
+#[derive()]
 pub struct Client {
     pub(crate) address: std::net::SocketAddr,
-    pub(crate) reflection_client: ReflectionClient,
     pub(crate) span: tracing::Span,
+    pub(crate) services: HashMap<String, Service>,
 }
 
 impl Client {
@@ -36,6 +37,7 @@ impl core::fmt::Debug for Client {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Client")
             .field("address", &self.address)
+            .field("services", &self.services.values())
             .finish()
     }
 }
