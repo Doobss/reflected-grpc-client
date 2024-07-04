@@ -7,5 +7,7 @@ pub enum ReflectedClientError {
     #[error(transparent)]
     TonicTransportError(#[from] tonic::transport::Error),
     #[error(transparent)]
-    ReflectionError(#[from] crate::reflection::ReflectionError),
+    TonicReflectionError(#[from] tonic_reflection::server::Error),
+    #[error(transparent)]
+    ParseAddressError(#[from] std::net::AddrParseError),
 }
