@@ -67,7 +67,13 @@ impl ReflectionClient {
                 use tonic_reflection::pb::server_reflection_response::MessageResponse;
                 match response {
                     MessageResponse::ListServicesResponse(response) => {
-                        return Ok(response.service);
+                        return Ok(response
+                            .service
+                            .into_iter()
+                            .filter(|service| {
+                                !service.name.clone().to_lowercase().contains("reflection")
+                            })
+                            .collect());
                     }
                     _ => {
                         tracing::info!("received incorrect response: {:?}", &response);
