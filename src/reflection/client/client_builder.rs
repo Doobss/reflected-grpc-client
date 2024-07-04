@@ -1,9 +1,13 @@
+use protobuf::descriptor;
+
+use super::ReflectionClient;
 use crate::{Client, ReflectedClientResult};
 use std::net::ToSocketAddrs;
 
 #[derive(Clone)]
 
 pub struct ClientBuilder {
+    secure: bool,
     address: std::net::SocketAddr,
     pub(crate) span: tracing::Span,
 }
@@ -18,22 +22,36 @@ impl ClientBuilder {
             .expect("Error parsing defautl client address.")
             .next()
             .expect("Missing default socket address.");
-        Self { span, address }
+        Self {
+            span,
+            address,
+            secure: false,
+        }
     }
 
-    pub fn build(self) -> ReflectedClientResult<Client> {
+    pub async fn build(self) -> ReflectedClientResult<Client> {
         let ClientBuilder {
             address,
             span: builder_span,
+            secure,
         } = self;
-        tracing::debug!("ClientBuilder building Client");
+        tracing::debug!("ClientBuilder building Client @ address: {}", &address);
 
         let client_span = tracing::debug_span!("Client");
         client_span.follows_from(builder_span);
         let _ = client_span.enter();
+
+        let mut reflection_client = ReflectionClient::from_address(address, secure).await?;
+        let services = reflection_client.get_services().await?;
+        let descriptors = reflection_client
+            .get_service_file_descriptors(services)
+            .await?;
+        tracing::debug!("descriptor keys: {:?}", &descriptors.keys());
+
         let client = Client {
             span: client_span,
             address,
+            reflection_client,
         };
         tracing::debug!("ClientBuilder built new : {:?}", &client);
         Ok(client)
@@ -41,6 +59,11 @@ impl ClientBuilder {
 
     pub fn with_address(mut self, address: std::net::SocketAddr) -> ReflectedClientResult<Self> {
         self.address = address;
+        Ok(self)
+    }
+
+    pub fn is_secure(mut self, secure: bool) -> ReflectedClientResult<Self> {
+        self.secure = secure;
         Ok(self)
     }
 }
@@ -69,16 +92,16 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn build_default_client() -> ReflectedClientResult<()> {
-        let _ = ClientBuilder::new().build()?;
+    #[tokio::test]
+    async fn build_default_client() -> ReflectedClientResult<()> {
+        let _ = ClientBuilder::new().build().await?;
         Ok(())
     }
 
-    #[test]
-    fn set_builder_address_and_build_client() -> ReflectedClientResult<()> {
+    #[tokio::test]
+    async fn set_builder_address_and_build_client() -> ReflectedClientResult<()> {
         let builder = ClientBuilder::new().with_address("[::]:50052".parse()?)?;
-        let _ = builder.build()?;
+        let _ = builder.build().await?;
         Ok(())
     }
 }

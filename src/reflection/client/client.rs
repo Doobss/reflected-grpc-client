@@ -1,9 +1,10 @@
-use super::ClientBuilder;
+use super::{ClientBuilder, ReflectionClient};
 
 #[derive(Clone)]
 
 pub struct Client {
     pub(crate) address: std::net::SocketAddr,
+    pub(crate) reflection_client: ReflectionClient,
     pub(crate) span: tracing::Span,
 }
 

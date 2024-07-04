@@ -6,8 +6,16 @@ pub enum ReflectedClientError {
     ProtoBufError(#[from] protobuf::Error),
     #[error(transparent)]
     TonicTransportError(#[from] tonic::transport::Error),
+    // #[error(transparent)]
+    // TonicReflectionClientError(#[from] tonic_reflection::pb::ErrorResponse),
     #[error(transparent)]
-    TonicReflectionError(#[from] tonic_reflection::server::Error),
+    TonicServiceReflectionError(#[from] tonic_reflection::server::Error),
+    #[error(transparent)]
+    TonicRequestError(#[from] tonic::Status),
     #[error(transparent)]
     ParseAddressError(#[from] std::net::AddrParseError),
+    #[error("Error parsing Uri for tonic transport: {message}")]
+    ParseUriError { message: String },
+    #[error("Error with reflected client: {message}")]
+    ReflectionError { message: String },
 }
