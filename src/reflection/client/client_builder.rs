@@ -58,3 +58,27 @@ impl core::fmt::Debug for ClientBuilder {
             .finish()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+
+    #[test]
+    fn new_builder() -> ReflectedClientResult<()> {
+        let _ = ClientBuilder::new();
+        Ok(())
+    }
+
+    #[test]
+    fn build_default_client() -> ReflectedClientResult<()> {
+        let _ = ClientBuilder::new().build()?;
+        Ok(())
+    }
+
+    #[test]
+    fn set_builder_address_and_build_client() -> ReflectedClientResult<()> {
+        let builder = ClientBuilder::new().with_address("[::]:50052".parse()?)?;
+        let _ = builder.build()?;
+        Ok(())
+    }
+}

@@ -38,3 +38,14 @@ impl core::fmt::Debug for Client {
             .finish()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+
+    #[test]
+    fn create_builder() -> ReflectedClientResult<()> {
+        let _ = Client::builder();
+        Ok(())
+    }
+}
