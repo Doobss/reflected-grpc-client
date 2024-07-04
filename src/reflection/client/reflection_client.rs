@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use crate::{ReflectedClientError, ReflectedClientResult};
+use crate::{ReflectedClientError, ReflectedClientResult, Service};
 use protobuf::{descriptor, Message};
 use tokio_stream::StreamExt;
 use tonic::transport::Uri;
@@ -43,7 +43,23 @@ impl ReflectionClient {
         Ok(Self { inner, endpoint })
     }
 
-    pub(crate) async fn get_services(&mut self) -> ReflectedClientResult<Vec<ServiceResponse>> {
+    pub async fn get_services(&mut self) -> ReflectedClientResult<HashMap<String, Service>> {
+        let services = self.get_service_descriptors().await?;
+        let descriptors = self.get_descriptors(services).await?;
+        let mut services = HashMap::with_capacity(descriptors.keys().len());
+        for descriptor in descriptors.into_values() {
+            for service_descriptor in descriptor.services() {
+                let service_name = service_descriptor.proto().name().to_owned();
+                let service = Service::from_descriptor(service_descriptor)?;
+                services.insert(service_name, service);
+            }
+        }
+        Ok(services)
+    }
+
+    pub(crate) async fn get_service_descriptors(
+        &mut self,
+    ) -> ReflectedClientResult<Vec<ServiceResponse>> {
         let request_stream = tokio_stream::iter(vec![ServerReflectionRequest {
             host: self
                 .endpoint
@@ -87,10 +103,10 @@ impl ReflectionClient {
         })
     }
 
-    pub(crate) async fn get_service_file_descriptors(
+    pub(crate) async fn get_descriptors(
         &mut self,
         services: Vec<ServiceResponse>,
-    ) -> ReflectedClientResult<HashMap<String, protobuf::descriptor::FileDescriptorProto>> {
+    ) -> ReflectedClientResult<HashMap<String, protobuf::reflect::FileDescriptor>> {
         let mut descriptors = HashMap::with_capacity(services.len());
         let requests: Vec<ServerReflectionRequest> = services
             .into_iter()
@@ -146,6 +162,17 @@ impl ReflectionClient {
                                         &descriptor.name,
                                         &service_name,
                                     );
+                                    let descriptor =
+                                        protobuf::reflect::FileDescriptor::new_dynamic(
+                                            descriptor,
+                                            &[],
+                                        )?;
+
+                                    tracing::debug!(
+                                        "Created dynamic descriptor: {:?} for service: {:?}",
+                                        &descriptor.name(),
+                                        &service_name,
+                                    );
                                     descriptors.insert(service_name, descriptor);
                                 } else {
                                     tracing::warn!("FileDescriptorResponse was empty");
@@ -185,17 +212,17 @@ mod tests {
     #[tokio::test]
     async fn get_services() -> ReflectedClientResult<()> {
         let mut client = ReflectionClient::from_address("[::]:50051".parse()?, false).await?;
-        let services = client.get_services().await?;
+        let services = client.get_service_descriptors().await?;
         assert_ne!(services.len(), 0);
         Ok(())
     }
 
     #[tokio::test]
-    async fn get_service_file_descriptors() -> ReflectedClientResult<()> {
+    async fn get_descriptors() -> ReflectedClientResult<()> {
         let mut client = ReflectionClient::from_address("[::]:50051".parse()?, false).await?;
-        let services = client.get_services().await?;
+        let services = client.get_service_descriptors().await?;
         let number_of_services = services.len();
-        let descriptors = client.get_service_file_descriptors(services).await?;
+        let descriptors = client.get_descriptors(services).await?;
         let number_of_descriptors = descriptors.keys().len();
         assert_eq!(number_of_services, number_of_descriptors);
         Ok(())

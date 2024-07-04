@@ -43,10 +43,7 @@ impl ClientBuilder {
 
         let mut reflection_client = ReflectionClient::from_address(address, secure).await?;
         let services = reflection_client.get_services().await?;
-        let descriptors = reflection_client
-            .get_service_file_descriptors(services)
-            .await?;
-        tracing::debug!("descriptor keys: {:?}", &descriptors.keys());
+        tracing::debug!("reflected services: {:?}", &services);
 
         let client = Client {
             span: client_span,

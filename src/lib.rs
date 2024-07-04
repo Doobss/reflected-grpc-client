@@ -15,4 +15,4 @@ pub mod logging;
 pub mod reflection;
 
 pub use error::{ReflectedClientError, ReflectedClientResult};
-pub use reflection::{Client, ClientBuilder};
+pub use reflection::{Client, ClientBuilder, Message, Method, Service};
